@@ -3,13 +3,14 @@ on:
   issue_comment:
     types: [created]
 jobs:
+
   comment-action:
     runs-on: ubuntu-latest
+    env:
+      TITLE: ${{github.event.issue.title}}
+      DESCRIPTION: ${{github.event.issue.body}}
     steps:
-      - env:
-        TITLE: ${{github.event.issue.title}}
-        DESCRIPTION: ${{github.event.issue.body}}
-
+      - name: "bla"
         run: |
-        echo "ISSUE TITLE: $TITLE"
-        echo "ISSUE DESCRIPTION: $DESCRIPTION"
+          echo "ISSUE TITLE: $TITLE"
+          echo "ISSUE DESCRIPTION: $DESCRIPTION"
