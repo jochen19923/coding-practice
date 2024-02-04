@@ -20,4 +20,4 @@ jobs:
         python -m pip install ".[dev]" --upgrade
     - name: test
       run: |
-        python -c '15+15'
+        python -c '15+15+15'
