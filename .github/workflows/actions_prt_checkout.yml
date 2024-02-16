@@ -16,11 +16,7 @@ jobs:
         npm install
         npm build
 
-    - uses: completely/fakeaction@v2
-      with:
+    - name: completely fake
+      run: echo $arg1
+      env:
         arg1: ${{ secrets.SECRET1 }}
-
-    - uses: fakerepo/comment-on-pr@v1
-      with:
-        message: |
-          Thank you!
