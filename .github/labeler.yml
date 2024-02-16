@@ -1,0 +1,4 @@
+docs: docs/*
+example: examples/**/*
+repository: packages/repository/*
+.gh: .github/**
