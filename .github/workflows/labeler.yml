@@ -1,12 +1,25 @@
-name: Pull request labeler
-on: [ pull_request_target ]
+name: '[gh] pull request labeler'
+
+on:
+  pull_request_target:
+    branches:
+      - master
+      - main
+      - v3.0-dev
+      - v3.0
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  triage:
+  basic_info_labeler:
+    if: github.repository == 'afredooo/coding-practice' && contains(fromJSON('[''opened'', ''reopened'', ''synchronize'']'), github.event.action)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
       - uses: actions/labeler@v4
         with:
