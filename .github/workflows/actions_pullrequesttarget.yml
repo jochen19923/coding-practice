@@ -1,0 +1,16 @@
+name: '[gh] pull request checks approval'
+
+on:
+  pull_request_target:
+    branches:
+      - master
+      - main
+      - v3.0-dev
+      - v3.0
+    types: [ opened, reopened ]
+  workflow_run:
+    workflows:
+      - \[gh\] pull request review
+    types: [ completed ]
+
+jobs:
