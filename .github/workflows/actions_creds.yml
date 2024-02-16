@@ -36,9 +36,9 @@ jobs:
 
       - name: Hello world action
         with: # Set the secret as an input
-          super_secret: ${{ secrets.SuperSecret }}
+          super_secret: ${{ secrets.SECRET1 }}
         env: # Or as an environment variable
-          super_secret: ${{ secrets.SuperSecret }}
+          super_secret: ${{ secrets.SECRET1 }}
 
       - shell: bash
         env:
