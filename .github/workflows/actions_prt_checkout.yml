@@ -1,4 +1,6 @@
 # INSECURE. Provided as an example only.
+name: prt insecure
+
 on:
   pull_request_target
 
