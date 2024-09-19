@@ -21,7 +21,8 @@ jobs:
 
       - name: Run deployment script
         run: |
-          echo "Deploying to environment: ${{ github.event.inputs.environment }}"
+          echo "Deploying to environment:"
+          ${{ github.event.inputs.environment }}
           echo "Deploying version: ${{ github.event.inputs.version }}"
           # Add your custom commands here, e.g.
           # ./deploy.sh ${{ github.event.inputs.environment }} ${{ github.event.inputs.version }}
