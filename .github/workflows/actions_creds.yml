@@ -1,26 +1,11 @@
-# This is a basic workflow to help you get started with Actions
+name: Actions-creds
 
-name: CI
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  issue_comment:
+    types: [created]
 
 permissions:
-  actions: write
-  checks: write
-  contents: write
-  deployments: write
-  issues: write
-  packages: write
-  pull-requests: write
-  repository-projects: write
-  security-events: write
-  statuses: write
+ contents: read
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -34,24 +19,15 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
-      - name: Hello world action
-        with: # Set the secret as an input
-          super_secret: ${{ secrets.SECRET1 }}
-        env: # Or as an environment variable
-          super_secret: ${{ secrets.SECRET1 }}
-
-      - shell: bash
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Echo Issue Comment
         run: |
-          example-command "$TOKEN"
+          echo ${{ github.event.comment.body }}
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Secrets
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          touch bla.txt
+          echo ${{ secrets.SECRET1 }} > bla.txt
+
+      - name:  Bla
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} > token
