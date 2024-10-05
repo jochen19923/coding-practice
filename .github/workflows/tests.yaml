@@ -1,0 +1,142 @@
+name: tests
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+  - cron:  '0 2 * * *'
+
+# Declare default permissions as read only.
+permissions: read-all
+
+jobs:
+  integration:
+    runs-on: [self-hosted, linux, x64]
+    # run integration tests on all builds except pull requests from forks or
+    # dependabot
+    if: |
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    name: "integration tests (linux)"
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      issues: write
+      pull-requests: write
+    steps:
+      # This helps understand how much disk space the cache and custom runner
+      # is actually using.
+      # Related to https://github.com/actions/runner/issues/2708
+      - name: Report disk usage
+        run: df -h
+
+      - name: Setup Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: "1.23"
+          cache: false
+
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - id: 'auth'
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@62cf5bd3e4211a0a0b51f2c6d6a37129d828611d # v2.1.5
+        with:
+          workload_identity_provider: ${{ vars.PROVIDER_NAME }}
+          service_account: ${{ vars.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@f0990588f1e5b5af6827153b93673613abdc6ec7 # v2.1.1
+
+      - name: Get Secrets
+        id: 'secrets'
+        uses: google-github-actions/get-secretmanager-secrets@95a0b09b8348ef3d02c68c6ba5662a037e78d713 # v2.1.4
+        with:
+          secrets: |-
+            ALLOYDB_INSTANCE_NAME:${{ vars.GOOGLE_CLOUD_PROJECT }}/ALLOYDB_INSTANCE_NAME
+            ALLOYDB_CLUSTER_PASS:${{ vars.GOOGLE_CLOUD_PROJECT }}/ALLOYDB_CLUSTER_PASS
+            ALLOYDB_INSTANCE_IP:${{ vars.GOOGLE_CLOUD_PROJECT }}/ALLOYDB_INSTANCE_IP
+            ALLOYDB_IAM_USER:${{ vars.GOOGLE_CLOUD_PROJECT }}/ALLOYDB_GO_IAM_USER
+            ALLOYDB_PSC_INSTANCE_URI:${{ vars.GOOGLE_CLOUD_PROJECT }}/ALLOYDB_PSC_INSTANCE_URI
+
+      - name: Run tests
+        env:
+          ALLOYDB_DB: 'postgres'
+          ALLOYDB_USER: 'postgres'
+          ALLOYDB_IAM_USER: '${{ steps.secrets.outputs.ALLOYDB_IAM_USER }}'
+          ALLOYDB_PASS: '${{ steps.secrets.outputs.ALLOYDB_CLUSTER_PASS }}'
+          ALLOYDB_INSTANCE_NAME: '${{ steps.secrets.outputs.ALLOYDB_INSTANCE_NAME }}'
+          ALLOYDB_INSTANCE_IP: '${{ steps.secrets.outputs.ALLOYDB_INSTANCE_IP }}'
+          ALLOYDB_PSC_INSTANCE_URI: '${{ steps.secrets.outputs.ALLOYDB_PSC_INSTANCE_URI }}'
+        # specifying bash shell ensures a failure in a piped process isn't lost by using `set -eo pipefail`
+        shell: bash
+        run: |
+          go test -v -race -cover ./... | tee test_results.txt
+
+      - name: Convert test output to XML
+        if: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && always() }}
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          go-junit-report -in test_results.txt -set-exit-code -out integration_sponge_log.xml
+
+      - name: FlakyBot
+        # only run flakybot on periodic (schedule) and continuous (push) events
+        if: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && always() }}
+        run: |
+          curl https://github.com/googleapis/repo-automation-bots/releases/download/flakybot-1.1.0/flakybot -o flakybot -s -L
+          chmod +x ./flakybot
+          ./flakybot --repo ${{github.repository}} --commit_hash ${{github.sha}} --build_url https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+  unit:
+    name: "unit tests"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        goarch: ["", "386"]
+        go-version: ["1.21", "1.23"]
+        exclude:
+          - os: macos-latest
+            goarch: "386"
+          - os: windows-latest
+            goarch: "386"
+          - os: ubuntu-latest
+            goarch: "386"
+            go-version: "1.21"
+      fail-fast: false
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      issues: write
+      pull-requests: write
+    env:
+      GOARCH: ${{ matrix.goarch }}
+    steps:
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: false
+
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Run tests
+        if: matrix.goarch == ''
+        run: |
+          go test -v -race -cover -short ./...
+      - name: Run tests (386)
+        # 386 archs don't support race detector
+        if: matrix.goarch == '386'
+        run: |
+          go test -v -cover -short ./...
